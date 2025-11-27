@@ -60,7 +60,7 @@ def scrape_product_info(url):
         return None, None, None, None, None
 
 # ------------------------------------------------------------
-# WORD-DATEI ERSTELLEN (wie vorher)
+# WORD-DATEI ERSTELLEN (wie vorher, ohne Leerzeile)
 # ------------------------------------------------------------
 def create_word_file(modell, artikelnummer, preis_aktuell, preis_alt, img_url):
     doc = Document()
@@ -119,22 +119,22 @@ def create_word_file(modell, artikelnummer, preis_aktuell, preis_alt, img_url):
     tcPr.append(borders)
 
     # ----------------------------------------------------
-# Hintergrundgrafik (links)
-# ----------------------------------------------------
-try:
-    bg_url = "https://backend.ofen.de/media/image/63/2e/5c/Grafik-fuer-Preisschildchen-unten.png"
-    bg_response = requests.get(bg_url)
-    bg_response.raise_for_status()
-    bg_stream = BytesIO(bg_response.content)
+    # Hintergrundgrafik (ohne neue Leerzeile)
+    # ----------------------------------------------------
+    try:
+        bg_url = "https://backend.ofen.de/media/image/63/2e/5c/Grafik-fuer-Preisschildchen-unten.png"
+        bg_response = requests.get(bg_url)
+        bg_response.raise_for_status()
+        bg_stream = BytesIO(bg_response.content)
 
-    # Den ersten vorhandenen Absatz nehmen, keine neue Zeile erzeugen
-    p_bg = cell.paragraphs[0] if cell.paragraphs else cell.add_paragraph()
-    run_bg = p_bg.add_run()
-    run_bg.add_picture(bg_stream, width=Mm(148), height=Mm(210))
-    p_bg.alignment = 1  # zentriert horizontal
+        # Ersten Absatz der Zelle verwenden
+        p_bg = cell.paragraphs[0] if cell.paragraphs else cell.add_paragraph()
+        run_bg = p_bg.add_run()
+        run_bg.add_picture(bg_stream, width=Mm(148), height=Mm(210))
+        p_bg.alignment = 1  # horizontal zentrieren
 
-except:
-    pass  # Keine Meldung mehr
+    except:
+        pass  # keine Meldung mehr
 
     # ----------------------------------------------------
     # Produktbild
@@ -220,4 +220,3 @@ if url:
                 )
     else:
         st.error("❌ Einige Produktdaten konnten nicht geladen werden.")
-
