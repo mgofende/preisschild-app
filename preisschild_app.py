@@ -12,7 +12,6 @@ import re
 # ------------------------------------------------------------
 # PRODUKTINFOS SCRAPEN
 # ------------------------------------------------------------
-
 def scrape_product_info(url):
     try:
         headers = {"User-Agent": "Mozilla/5.0"}
@@ -60,11 +59,9 @@ def scrape_product_info(url):
         st.error(f"Fehler beim Auslesen der Webseite: {e}")
         return None, None, None, None, None
 
-
 # ------------------------------------------------------------
-# WORD-DATEI ERSTELLEN (LINKS AUTOMATISCH HINTER TEXT)
+# WORD-DATEI ERSTELLEN (ZENTRIERT)
 # ------------------------------------------------------------
-
 def create_word_file(modell, artikelnummer, preis_aktuell, preis_alt, img_url):
     doc = Document()
     section = doc.sections[0]
@@ -77,8 +74,8 @@ def create_word_file(modell, artikelnummer, preis_aktuell, preis_alt, img_url):
     # Normale Ränder
     section.top_margin = Mm(20)
     section.bottom_margin = Mm(20)
-    section.left_margin = Mm(31)
-    section.right_margin = Mm(31)
+    section.left_margin = Mm(20)
+    section.right_margin = Mm(20)
 
     # Schriftart global
     style = doc.styles['Normal']
@@ -88,12 +85,16 @@ def create_word_file(modell, artikelnummer, preis_aktuell, preis_alt, img_url):
     rFonts.set(qn('w:eastAsia'), 'Arial')
 
     # ----------------------------------------------------
-    # A5-Rahmen-Tabelle
+    # Tabelle als A5-Rahmen
     # ----------------------------------------------------
     table = doc.add_table(rows=1, cols=1)
     table.autofit = False
 
-    # Innenabstände der Tabelle entfernen
+    # Tabellenzelle auf A5-Größe
+    table.columns[0].width = Mm(148)
+    table.rows[0].height = Mm(210)
+
+    # Innenabstände entfernen
     tbl_pr = table._tbl.tblPr
     tbl_cell_mar = OxmlElement("w:tblCellMar")
     for side in ["top", "left", "bottom", "right"]:
@@ -103,74 +104,57 @@ def create_word_file(modell, artikelnummer, preis_aktuell, preis_alt, img_url):
         tbl_cell_mar.append(el)
     tbl_pr.append(tbl_cell_mar)
 
-    cell = table.rows[0].cells[0]
+    cell = table.cell(0, 0)
 
-    # Tabelle = exakt A5
-    table.columns[0].width = Mm(148)
-    table.rows[0].height = Mm(210)
-
-    # Schneide-Rahmen zeichnen
+    # Schneide-Rahmen
     tc = cell._tc
     tcPr = tc.get_or_add_tcPr()
     borders = OxmlElement('w:tcBorders')
-
     for edge in ["top", "left", "bottom", "right"]:
         edge_el = OxmlElement(f"w:{edge}")
         edge_el.set(qn("w:val"), "dotted")
         edge_el.set(qn("w:sz"), "10")
         edge_el.set(qn("w:color"), "C0C0C0")
         borders.append(edge_el)
-
     tcPr.append(borders)
 
     # ----------------------------------------------------
-    # Hintergrundgrafik (automatisch hinter Text)
+    # Hintergrundgrafik (links)
     # ----------------------------------------------------
     try:
         bg_url = "https://backend.ofen.de/media/image/63/2e/5c/Grafik-fuer-Preisschildchen-unten.png"
         bg_response = requests.get(bg_url)
         bg_response.raise_for_status()
         bg_stream = BytesIO(bg_response.content)
-
-        # Run für Hintergrund
-        p_bg = cell.paragraphs[0] if cell.paragraphs else cell.add_paragraph()
+        p_bg = cell.add_paragraph()
         run_bg = p_bg.add_run()
-        pic = run_bg.add_picture(bg_stream, width=Mm(148), height=Mm(210))
-
-        # XML bearbeiten, um Bild hinter Text zu legen
-        pic_element = run_bg._r.xpath(".//pic:pic")[0]
-        sp_pr = pic_element.xpath(".//pic:spPr")[0]
-        # wp14:behindDoc hinzufügen
-        behind = OxmlElement('wp14:behindDoc')
-        sp_pr.insert(0, behind)
-
+        run_bg.add_picture(bg_stream, width=Mm(148), height=Mm(210))
+        p_bg.alignment = 1  # zentrieren horizontal
     except:
         cell.add_paragraph("Hintergrundbild konnte nicht geladen werden.")
 
     # ----------------------------------------------------
-    # Produktbild
+    # Produktbild zentrieren
     # ----------------------------------------------------
     if img_url:
         try:
             img_response = requests.get(img_url)
             img_response.raise_for_status()
             img_stream = BytesIO(img_response.content)
-
             p_img = cell.add_paragraph()
             p_img.alignment = 1
-            p_img.add_run().add_picture(img_stream, width=Mm(80))
-
+            run_img = p_img.add_run()
+            run_img.add_picture(img_stream, width=Mm(80))
         except:
             cell.add_paragraph("Produktbild konnte nicht geladen werden.")
     else:
         cell.add_paragraph("Kein Produktbild verfügbar.")
 
     # ----------------------------------------------------
-    # Text
+    # Text zentrieren
     # ----------------------------------------------------
     p = cell.add_paragraph()
     p.alignment = 1
-
     run1 = p.add_run(modell + "\n")
     run1.font.size = Pt(18)
     run1.font.bold = True
@@ -195,11 +179,9 @@ def create_word_file(modell, artikelnummer, preis_aktuell, preis_alt, img_url):
     out.seek(0)
     return out
 
-
 # ------------------------------------------------------------
 # STREAMLIT UI
 # ------------------------------------------------------------
-
 st.set_page_config(page_title="Preisschild Generator A5 mit Schneide-Rahmen", page_icon="🧾")
 st.title("🧾 Preisschild Generator (A5 auf A4) mit Schneide-Rahmen")
 
