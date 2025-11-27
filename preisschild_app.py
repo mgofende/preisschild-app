@@ -62,7 +62,7 @@ def scrape_product_info(url):
 
 
 # ------------------------------------------------------------
-# WORD-DATEI ERSTELLEN (MIT A5-SCHNITT-RAHMEN)
+# WORD-DATEI ERSTELLEN (LINKS AUTOMATISCH HINTER TEXT)
 # ------------------------------------------------------------
 
 def create_word_file(modell, artikelnummer, preis_aktuell, preis_alt, img_url):
@@ -93,7 +93,7 @@ def create_word_file(modell, artikelnummer, preis_aktuell, preis_alt, img_url):
     table = doc.add_table(rows=1, cols=1)
     table.autofit = False
 
-    # ❗ Innenabstände der Tabelle entfernen = GANZ WICHTIG
+    # Innenabstände der Tabelle entfernen
     tbl_pr = table._tbl.tblPr
     tbl_cell_mar = OxmlElement("w:tblCellMar")
     for side in ["top", "left", "bottom", "right"]:
@@ -109,9 +109,7 @@ def create_word_file(modell, artikelnummer, preis_aktuell, preis_alt, img_url):
     table.columns[0].width = Mm(148)
     table.rows[0].height = Mm(210)
 
-    # ----------------------------------------------------
     # Schneide-Rahmen zeichnen
-    # ----------------------------------------------------
     tc = cell._tc
     tcPr = tc.get_or_add_tcPr()
     borders = OxmlElement('w:tcBorders')
@@ -126,28 +124,28 @@ def create_word_file(modell, artikelnummer, preis_aktuell, preis_alt, img_url):
     tcPr.append(borders)
 
     # ----------------------------------------------------
-# Hintergrundgrafik (links, hinter Text)
-# ----------------------------------------------------
-try:
-    bg_url = "https://backend.ofen.de/media/image/63/2e/5c/Grafik-fuer-Preisschildchen-unten.png"
-    bg_response = requests.get(bg_url)
-    bg_response.raise_for_status()
-    bg_stream = BytesIO(bg_response.content)
+    # Hintergrundgrafik (automatisch hinter Text)
+    # ----------------------------------------------------
+    try:
+        bg_url = "https://backend.ofen.de/media/image/63/2e/5c/Grafik-fuer-Preisschildchen-unten.png"
+        bg_response = requests.get(bg_url)
+        bg_response.raise_for_status()
+        bg_stream = BytesIO(bg_response.content)
 
-    # Neues Inline-Shape in der Zelle (wird hinter Text)
-    p_bg = cell.paragraphs[0] if cell.paragraphs else cell.add_paragraph()
-    run_bg = p_bg.add_run()
-    pic = run_bg.add_picture(bg_stream, width=Mm(148), height=Mm(210))
+        # Run für Hintergrund
+        p_bg = cell.paragraphs[0] if cell.paragraphs else cell.add_paragraph()
+        run_bg = p_bg.add_run()
+        pic = run_bg.add_picture(bg_stream, width=Mm(148), height=Mm(210))
 
-    # XML bearbeiten, um Bild hinter Text zu legen
-    pic_element = run_bg._r.xpath(".//pic:pic")[0]
-    sp_pr = pic_element.xpath(".//pic:spPr")[0]
-    xfrm = sp_pr.xpath(".//a:xfrm")[0]
-    # Hinter Text (behindDoc)
-    sp_pr.insert(0, OxmlElement('wp14:behindDoc'))
+        # XML bearbeiten, um Bild hinter Text zu legen
+        pic_element = run_bg._r.xpath(".//pic:pic")[0]
+        sp_pr = pic_element.xpath(".//pic:spPr")[0]
+        # wp14:behindDoc hinzufügen
+        behind = OxmlElement('wp14:behindDoc')
+        sp_pr.insert(0, behind)
 
-except:
-    cell.add_paragraph("Hintergrundbild konnte nicht geladen werden.")
+    except:
+        cell.add_paragraph("Hintergrundbild konnte nicht geladen werden.")
 
     # ----------------------------------------------------
     # Produktbild
@@ -180,8 +178,6 @@ except:
     run2 = p.add_run(f"Artikelnummer: {artikelnummer}\n")
     run2.font.size = Pt(11)
 
-    p.add_run("\n").font.size = Pt(4)
-
     run3 = p.add_run(preis_aktuell + "\n")
     run3.font.size = Pt(24)
     run3.font.bold = True
@@ -193,9 +189,7 @@ except:
         run4.font.strike = True
         run4.font.color.rgb = RGBColor(120, 120, 120)
 
-    # ----------------------------------------------------
     # Speichern
-    # ----------------------------------------------------
     out = BytesIO()
     doc.save(out)
     out.seek(0)
@@ -237,5 +231,3 @@ if url:
                 )
     else:
         st.error("❌ Einige Produktdaten konnten nicht geladen werden.")
-
-
