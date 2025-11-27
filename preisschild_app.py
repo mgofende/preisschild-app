@@ -119,20 +119,22 @@ def create_word_file(modell, artikelnummer, preis_aktuell, preis_alt, img_url):
     tcPr.append(borders)
 
     # ----------------------------------------------------
-    # Hintergrundgrafik (wie vorher, ohne Fehlermeldung)
-    # ----------------------------------------------------
-    try:
-        bg_url = "https://backend.ofen.de/media/image/63/2e/5c/Grafik-fuer-Preisschildchen-unten.png"
-        bg_response = requests.get(bg_url)
-        bg_response.raise_for_status()
-        bg_stream = BytesIO(bg_response.content)
+# Hintergrundgrafik (links)
+# ----------------------------------------------------
+try:
+    bg_url = "https://backend.ofen.de/media/image/63/2e/5c/Grafik-fuer-Preisschildchen-unten.png"
+    bg_response = requests.get(bg_url)
+    bg_response.raise_for_status()
+    bg_stream = BytesIO(bg_response.content)
 
-        p_bg = cell.add_paragraph()
-        p_bg.alignment = 1
-        p_bg.add_run().add_picture(bg_stream, width=Mm(148), height=Mm(210))
+    # Den ersten vorhandenen Absatz nehmen, keine neue Zeile erzeugen
+    p_bg = cell.paragraphs[0] if cell.paragraphs else cell.add_paragraph()
+    run_bg = p_bg.add_run()
+    run_bg.add_picture(bg_stream, width=Mm(148), height=Mm(210))
+    p_bg.alignment = 1  # zentriert horizontal
 
-    except:
-        pass  # keine Meldung mehr, falls Bild nicht geladen werden kann
+except:
+    pass  # Keine Meldung mehr
 
     # ----------------------------------------------------
     # Produktbild
@@ -218,3 +220,4 @@ if url:
                 )
     else:
         st.error("❌ Einige Produktdaten konnten nicht geladen werden.")
+
