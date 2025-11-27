@@ -74,13 +74,13 @@ def create_word_file(modell, artikelnummer, preis_aktuell, preis_alt, img_url):
     section.page_height = Mm(297)
     section.orientation = WD_ORIENT.PORTRAIT
 
-    # Seitenränder (bleiben wie sie sind – Rahmen ist unabhängig davon)
+    # Normale Ränder
     section.top_margin = Mm(20)
     section.bottom_margin = Mm(20)
     section.left_margin = Mm(31)
     section.right_margin = Mm(31)
 
-    # Standard-Schriftart global
+    # Schriftart global
     style = doc.styles['Normal']
     style.font.name = 'Arial'
     rPr = style.element.rPr
@@ -88,16 +88,30 @@ def create_word_file(modell, artikelnummer, preis_aktuell, preis_alt, img_url):
     rFonts.set(qn('w:eastAsia'), 'Arial')
 
     # ----------------------------------------------------
-    # A5-Rahmen (148 × 210 mm)
+    # A5-Rahmen-Tabelle
     # ----------------------------------------------------
     table = doc.add_table(rows=1, cols=1)
     table.autofit = False
 
+    # ❗ Innenabstände der Tabelle entfernen = GANZ WICHTIG
+    tbl_pr = table._tbl.tblPr
+    tbl_cell_mar = OxmlElement("w:tblCellMar")
+    for side in ["top", "left", "bottom", "right"]:
+        el = OxmlElement(f"w:{side}")
+        el.set(qn("w:w"), "0")
+        el.set(qn("w:type"), "dxa")
+        tbl_cell_mar.append(el)
+    tbl_pr.append(tbl_cell_mar)
+
     cell = table.rows[0].cells[0]
+
+    # Tabelle = exakt A5
     table.columns[0].width = Mm(148)
     table.rows[0].height = Mm(210)
 
-    # Schneide-Rahmen (gepunktet, hellgrau)
+    # ----------------------------------------------------
+    # Schneide-Rahmen zeichnen
+    # ----------------------------------------------------
     tc = cell._tc
     tcPr = tc.get_or_add_tcPr()
     borders = OxmlElement('w:tcBorders')
@@ -105,14 +119,14 @@ def create_word_file(modell, artikelnummer, preis_aktuell, preis_alt, img_url):
     for edge in ["top", "left", "bottom", "right"]:
         edge_el = OxmlElement(f"w:{edge}")
         edge_el.set(qn("w:val"), "dotted")
-        edge_el.set(qn("w:sz"), "10")            # Stärke
-        edge_el.set(qn("w:color"), "C0C0C0")     # hellgrau
+        edge_el.set(qn("w:sz"), "10")
+        edge_el.set(qn("w:color"), "C0C0C0")
         borders.append(edge_el)
 
     tcPr.append(borders)
 
     # ----------------------------------------------------
-    # Hintergrundbild (A5 groß) -> dahinter
+    # Hintergrundgrafik (A5)
     # ----------------------------------------------------
     try:
         bg_url = "https://backend.ofen.de/media/image/63/2e/5c/Grafik-fuer-Preisschildchen-unten.png"
@@ -128,7 +142,7 @@ def create_word_file(modell, artikelnummer, preis_aktuell, preis_alt, img_url):
         cell.add_paragraph("Hintergrundbild konnte nicht geladen werden.")
 
     # ----------------------------------------------------
-    # Produktbild (überschreibt Hintergrund wie gewünscht)
+    # Produktbild
     # ----------------------------------------------------
     if img_url:
         try:
@@ -146,7 +160,7 @@ def create_word_file(modell, artikelnummer, preis_aktuell, preis_alt, img_url):
         cell.add_paragraph("Kein Produktbild verfügbar.")
 
     # ----------------------------------------------------
-    # Textblock
+    # Text
     # ----------------------------------------------------
     p = cell.add_paragraph()
     p.alignment = 1
@@ -172,12 +186,12 @@ def create_word_file(modell, artikelnummer, preis_aktuell, preis_alt, img_url):
         run4.font.color.rgb = RGBColor(120, 120, 120)
 
     # ----------------------------------------------------
-    # Datei speichern
+    # Speichern
     # ----------------------------------------------------
-    output = BytesIO()
-    doc.save(output)
-    output.seek(0)
-    return output
+    out = BytesIO()
+    doc.save(out)
+    out.seek(0)
+    return out
 
 
 # ------------------------------------------------------------
@@ -215,3 +229,4 @@ if url:
                 )
     else:
         st.error("❌ Einige Produktdaten konnten nicht geladen werden.")
+
