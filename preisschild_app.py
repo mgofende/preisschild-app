@@ -9,6 +9,10 @@ from docx.oxml import OxmlElement
 from io import BytesIO
 import re
 
+# ------------------------------------------------------------
+# PRODUKTINFOS SCRAPEN
+# ------------------------------------------------------------
+
 def scrape_product_info(url):
     try:
         headers = {"User-Agent": "Mozilla/5.0"}
@@ -57,64 +61,75 @@ def scrape_product_info(url):
         return None, None, None, None, None
 
 
+# ------------------------------------------------------------
+# WORD-DATEI ERSTELLEN (MIT A5-SCHNITT-RAHMEN)
+# ------------------------------------------------------------
+
 def create_word_file(modell, artikelnummer, preis_aktuell, preis_alt, img_url):
     doc = Document()
     section = doc.sections[0]
 
+    # Seite = A4
     section.page_width = Mm(210)
     section.page_height = Mm(297)
     section.orientation = WD_ORIENT.PORTRAIT
 
+    # Seitenränder (bleiben wie sie sind – Rahmen ist unabhängig davon)
     section.top_margin = Mm(20)
     section.bottom_margin = Mm(20)
     section.left_margin = Mm(31)
     section.right_margin = Mm(31)
 
+    # Standard-Schriftart global
     style = doc.styles['Normal']
-    font = style.font
-    font.name = 'Arial'
+    style.font.name = 'Arial'
     rPr = style.element.rPr
     rFonts = rPr.rFonts
     rFonts.set(qn('w:eastAsia'), 'Arial')
 
-    # ----------------------------
-    # A5-Rahmen als Tabelle
-    # ----------------------------
+    # ----------------------------------------------------
+    # A5-Rahmen (148 × 210 mm)
+    # ----------------------------------------------------
     table = doc.add_table(rows=1, cols=1)
     table.autofit = False
-    cell = table.rows[0].cells[0]
 
+    cell = table.rows[0].cells[0]
     table.columns[0].width = Mm(148)
     table.rows[0].height = Mm(210)
 
-    # Rahmen zeichnen
+    # Schneide-Rahmen (gepunktet, hellgrau)
     tc = cell._tc
     tcPr = tc.get_or_add_tcPr()
     borders = OxmlElement('w:tcBorders')
 
-    for border_name in ("top", "left", "bottom", "right"):
-        border_el = OxmlElement(f"w:{border_name}")
-        border_el.set(qn("w:val"), "dotted")
-        border_el.set(qn("w:sz"), "8")           # Dicke
-        border_el.set(qn("w:color"), "C0C0C0")   # Hellgrau
-        borders.append(border_el)
+    for edge in ["top", "left", "bottom", "right"]:
+        edge_el = OxmlElement(f"w:{edge}")
+        edge_el.set(qn("w:val"), "dotted")
+        edge_el.set(qn("w:sz"), "10")            # Stärke
+        edge_el.set(qn("w:color"), "C0C0C0")     # hellgrau
+        borders.append(edge_el)
 
     tcPr.append(borders)
 
-    # Inhalt in die Zellbox
-    # Hintergrundbild
+    # ----------------------------------------------------
+    # Hintergrundbild (A5 groß) -> dahinter
+    # ----------------------------------------------------
     try:
         bg_url = "https://backend.ofen.de/media/image/63/2e/5c/Grafik-fuer-Preisschildchen-unten.png"
         bg_response = requests.get(bg_url)
         bg_response.raise_for_status()
         bg_stream = BytesIO(bg_response.content)
 
-        run_bg = cell.add_paragraph().add_run()
-        run_bg.add_picture(bg_stream, width=Mm(148), height=Mm(210))
+        p_bg = cell.add_paragraph()
+        p_bg.alignment = 1
+        p_bg.add_run().add_picture(bg_stream, width=Mm(148), height=Mm(210))
+
     except:
         cell.add_paragraph("Hintergrundbild konnte nicht geladen werden.")
 
-    # Produktbild
+    # ----------------------------------------------------
+    # Produktbild (überschreibt Hintergrund wie gewünscht)
+    # ----------------------------------------------------
     if img_url:
         try:
             img_response = requests.get(img_url)
@@ -124,12 +139,15 @@ def create_word_file(modell, artikelnummer, preis_aktuell, preis_alt, img_url):
             p_img = cell.add_paragraph()
             p_img.alignment = 1
             p_img.add_run().add_picture(img_stream, width=Mm(80))
+
         except:
             cell.add_paragraph("Produktbild konnte nicht geladen werden.")
     else:
         cell.add_paragraph("Kein Produktbild verfügbar.")
 
-    # Text
+    # ----------------------------------------------------
+    # Textblock
+    # ----------------------------------------------------
     p = cell.add_paragraph()
     p.alignment = 1
 
@@ -140,7 +158,7 @@ def create_word_file(modell, artikelnummer, preis_aktuell, preis_alt, img_url):
     run2 = p.add_run(f"Artikelnummer: {artikelnummer}\n")
     run2.font.size = Pt(11)
 
-    p.add_run(" \n").font.size = Pt(4)
+    p.add_run("\n").font.size = Pt(4)
 
     run3 = p.add_run(preis_aktuell + "\n")
     run3.font.size = Pt(24)
@@ -153,18 +171,21 @@ def create_word_file(modell, artikelnummer, preis_aktuell, preis_alt, img_url):
         run4.font.strike = True
         run4.font.color.rgb = RGBColor(120, 120, 120)
 
-    word_io = BytesIO()
-    doc.save(word_io)
-    word_io.seek(0)
-    return word_io
+    # ----------------------------------------------------
+    # Datei speichern
+    # ----------------------------------------------------
+    output = BytesIO()
+    doc.save(output)
+    output.seek(0)
+    return output
 
 
-# ---------------------------------------------------
-# Streamlit UI
-# ---------------------------------------------------
+# ------------------------------------------------------------
+# STREAMLIT UI
+# ------------------------------------------------------------
 
-st.set_page_config(page_title="Preisschild Generator A5 mit Rahmen", page_icon="🧾")
-st.title("🧾 Preisschild Generator (A5 auf A4) mit gepunktetem Rahmen")
+st.set_page_config(page_title="Preisschild Generator A5 mit Schneide-Rahmen", page_icon="🧾")
+st.title("🧾 Preisschild Generator (A5 auf A4) mit Schneide-Rahmen")
 
 st.markdown("**Gib den Produktlink von Ofen.de ein:**")
 
