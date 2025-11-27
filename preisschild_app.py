@@ -60,7 +60,7 @@ def scrape_product_info(url):
         return None, None, None, None, None
 
 # ------------------------------------------------------------
-# WORD-DATEI ERSTELLEN (wie vorher, ohne Leerzeile)
+# WORD-DATEI ERSTELLEN (A5-Rahmen dünner/heller)
 # ------------------------------------------------------------
 def create_word_file(modell, artikelnummer, preis_aktuell, preis_alt, img_url):
     doc = Document()
@@ -106,15 +106,15 @@ def create_word_file(modell, artikelnummer, preis_aktuell, preis_alt, img_url):
     table.columns[0].width = Mm(148)
     table.rows[0].height = Mm(210)
 
-    # Schneide-Rahmen zeichnen
+    # Schneide-Rahmen dünner & heller
     tc = cell._tc
     tcPr = tc.get_or_add_tcPr()
     borders = OxmlElement('w:tcBorders')
     for edge in ["top", "left", "bottom", "right"]:
         edge_el = OxmlElement(f"w:{edge}")
         edge_el.set(qn("w:val"), "dotted")
-        edge_el.set(qn("w:sz"), "10")
-        edge_el.set(qn("w:color"), "C0C0C0")
+        edge_el.set(qn("w:sz"), "5")  # dünner
+        edge_el.set(qn("w:color"), "E0E0E0")  # helleres Grau
         borders.append(edge_el)
     tcPr.append(borders)
 
