@@ -218,5 +218,14 @@ if url:
                     file_name="preisschild_A5_mit_Rahmen.docx",
                     mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 )
+                # Wichtiger Hinweis unter dem Button
+                st.info(
+                    "Hinweis:\n"
+                    "- Rechtsklick unten auf dem schwarzen Banner (ofen.de)\n"
+                    "- Anschließend auf 'Textumbruch'\n"
+                    "- Nun entweder 'Transparent' oder 'Hinter den Text' auswählen\n"
+                    "- Drucken und fertig"
+                )
     else:
         st.error("❌ Einige Produktdaten konnten nicht geladen werden.")
+
