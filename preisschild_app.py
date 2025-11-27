@@ -4,6 +4,7 @@ from bs4 import BeautifulSoup
 from docx import Document
 from docx.shared import Pt, RGBColor, Mm
 from docx.enum.section import WD_ORIENT
+from docx.enum.table import WD_TABLE_ALIGNMENT
 from docx.oxml.ns import qn
 from docx.oxml import OxmlElement
 from io import BytesIO
@@ -60,7 +61,7 @@ def scrape_product_info(url):
         return None, None, None, None, None
 
 # ------------------------------------------------------------
-# WORD-DATEI ERSTELLEN (A5-Rahmen dünner/heller)
+# WORD-DATEI ERSTELLEN (A5-Rahmen dünner/heller, zentriert)
 # ------------------------------------------------------------
 def create_word_file(modell, artikelnummer, preis_aktuell, preis_alt, img_url):
     doc = Document()
@@ -89,6 +90,7 @@ def create_word_file(modell, artikelnummer, preis_aktuell, preis_alt, img_url):
     # ----------------------------------------------------
     table = doc.add_table(rows=1, cols=1)
     table.autofit = False
+    table.alignment = WD_TABLE_ALIGNMENT.CENTER  # Tabelle zentrieren
 
     # Innenabstände der Tabelle entfernen
     tbl_pr = table._tbl.tblPr
@@ -119,7 +121,7 @@ def create_word_file(modell, artikelnummer, preis_aktuell, preis_alt, img_url):
     tcPr.append(borders)
 
     # ----------------------------------------------------
-    # Hintergrundgrafik (ohne neue Leerzeile)
+    # Hintergrundgrafik (exakt zentriert)
     # ----------------------------------------------------
     try:
         bg_url = "https://backend.ofen.de/media/image/63/2e/5c/Grafik-fuer-Preisschildchen-unten.png"
@@ -127,14 +129,14 @@ def create_word_file(modell, artikelnummer, preis_aktuell, preis_alt, img_url):
         bg_response.raise_for_status()
         bg_stream = BytesIO(bg_response.content)
 
-        # Ersten Absatz der Zelle verwenden
         p_bg = cell.paragraphs[0] if cell.paragraphs else cell.add_paragraph()
+        p_bg.clear()  # Entfernt evtl. Leerzeichen oder Zeilenumbrüche oben
         run_bg = p_bg.add_run()
         run_bg.add_picture(bg_stream, width=Mm(148), height=Mm(210))
-        p_bg.alignment = 1  # horizontal zentrieren
+        p_bg.alignment = 1  # Absatz zentriert
 
     except:
-        pass  # keine Meldung mehr
+        pass
 
     # ----------------------------------------------------
     # Produktbild
@@ -218,7 +220,7 @@ if url:
                     file_name="preisschild_A5_mit_Rahmen.docx",
                     mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 )
-                # Wichtiger Hinweis unter dem Button
+                # Hinweis unter Download-Button
                 st.info(
                     "Hinweis:\n"
                     "- Rechtsklick unten auf dem schwarzen Banner (ofen.de)\n"
@@ -228,4 +230,3 @@ if url:
                 )
     else:
         st.error("❌ Einige Produktdaten konnten nicht geladen werden.")
-
