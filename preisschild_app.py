@@ -1,3 +1,4 @@
+import streamlit as st
 import requests
 from bs4 import BeautifulSoup
 import pandas as pd
@@ -12,29 +13,23 @@ def scrape_ofen(url, artikelnummer=None, ean=None):
     response.raise_for_status()
     soup = BeautifulSoup(response.text, "html.parser")
     
-    # Modell / Produktname
     modell_tag = soup.find('h1', class_='product--title') or soup.find('h1', class_='product-header-title')
     modell = modell_tag.text.strip() if modell_tag else None
     
-    # Artikelnummer
     if not artikelnummer:
         all_text = soup.get_text()
         match = re.search(r'Artikel-?Nr\.?:\s*(\d+)', all_text)
         artikelnummer = match.group(1) if match else None
     
-    # Preis aktuell (rot)
     preis_tag = soup.find('span', class_='price--content') or soup.find('div', class_='price--current')
     preis = preis_tag.text.strip() if preis_tag else None
     
-    # UVP
     uvp_tag = soup.find('span', class_='price--line-through') or soup.find('span', class_='price-old')
     uvp = uvp_tag.text.strip() if uvp_tag else None
     
-    # Lieferzeit
     liefer_tag = soup.find(text=re.compile(r"Lieferzeit"))
     lieferzeit = liefer_tag.strip() if liefer_tag else None
     
-    # EAN
     if not ean:
         all_text = soup.get_text()
         ean_match = re.search(r'\b(\d{13})\b', all_text)
@@ -50,7 +45,7 @@ def scrape_ofen(url, artikelnummer=None, ean=None):
     }
 
 # -----------------------------
-# Shop Scraper Funktionen
+# Shop Scraper Funktionen (Beispiele)
 # -----------------------------
 def scrape_feuerdepot():
     url = "https://www.feuerdepot.de/pelletofen/pelletofen-la-nordica-extraflame-klaudia-plus-5-0-8-kw/?number=1286850"
@@ -121,7 +116,6 @@ def scrape_feuerfuchs():
     r = requests.get(url, headers={"User-Agent":"Mozilla/5.0"})
     soup = BeautifulSoup(r.text, "html.parser")
     
-    # Hier müsste ggf. die genaue Produktseite aufgerufen werden
     name_tag = soup.find('h1')
     name = name_tag.text.strip() if name_tag else None
     
@@ -146,25 +140,42 @@ def scrape_feuerfuchs():
     }
 
 # -----------------------------
-# Main
+# Streamlit UI
 # -----------------------------
-if __name__ == "__main__":
-    ofen_url = input("ofen.de URL eingeben: ")
-    artikelnummer = input("Optional: Hersteller Artikelnummer eingeben: ")
-    ean = input("Optional: EAN eingeben (13-stellig): ")
-    
-    product = scrape_ofen(ofen_url, artikelnummer=artikelnummer if artikelnummer else None, ean=ean if ean else None)
-    print("Produktdaten von ofen.de:")
-    print(product)
-    
-    results = []
-    results.append(scrape_feuerdepot())
-    results.append(scrape_kamdi())
-    results.append(scrape_feuerfuchs())
-    
-    df = pd.DataFrame(results)
-    print("\nPreisvergleich Ergebnisse:")
-    print(df)
-    
-    df.to_csv("preisvergleich.csv", index=False)
-    print("\nErgebnisse in preisvergleich.csv gespeichert.")
+st.set_page_config(page_title="Preisvergleich Pelletofen", page_icon="🔥")
+st.title("🔥 Preisvergleich Pelletofen Extraflame Klaudia 5.0 Evo")
+
+st.markdown("**Gib die ofen.de URL ein und optional Artikelnummer / EAN:**")
+
+ofen_url = st.text_input("ofen.de URL")
+artikelnummer = st.text_input("Hersteller Artikelnummer (optional)")
+ean = st.text_input("EAN (optional, 13-stellig)")
+
+if st.button("Preissuche starten"):
+    with st.spinner("Daten werden geladen..."):
+        try:
+            product = scrape_ofen(ofen_url, artikelnummer=artikelnummer if artikelnummer else None, ean=ean if ean else None)
+            st.subheader("Daten von ofen.de")
+            st.write(product)
+            
+            # Shops durchsuchen
+            results = []
+            results.append(scrape_feuerdepot())
+            results.append(scrape_kamdi())
+            results.append(scrape_feuerfuchs())
+            
+            df = pd.DataFrame(results)
+            st.subheader("Preisvergleich Ergebnisse")
+            st.dataframe(df)
+            
+            # CSV Download
+            csv = df.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                label="📥 Ergebnisse als CSV herunterladen",
+                data=csv,
+                file_name='preisvergleich.csv',
+                mime='text/csv'
+            )
+            
+        except Exception as e:
+            st.error(f"Fehler: {e}")
