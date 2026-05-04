@@ -50,11 +50,16 @@ def _parse_html(html: str):
         preis_aktuell = raw.replace("\xa0", " ").replace("*", "").strip()
 
     # ── Streichpreis ──────────────────────────────────────────
-    # <span class="list-price-price">349,00 €</span>
+    # Nur innerhalb des Hauptpreis-Containers suchen, NICHT bei Zubehör!
+    # <div class="product-detail-price-container">
+    #   <span class="product-detail-list-price-wrapper">
+    #     <span class="list-price-price">349,00 €</span>
     preis_alt = ""
-    tag = soup.find("span", class_="list-price-price")
-    if tag:
-        preis_alt = tag.get_text(strip=True).replace("\xa0", " ").replace("*", "").strip()
+    price_container = soup.find("div", class_="product-detail-price-container")
+    if price_container:
+        tag = price_container.find("span", class_="list-price-price")
+        if tag:
+            preis_alt = tag.get_text(strip=True).replace("\xa0", " ").replace("*", "").strip()
 
     # ── Artikelnummer ─────────────────────────────────────────
     # <tr class="properties-row">
